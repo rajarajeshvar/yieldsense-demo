@@ -151,9 +151,11 @@ export async function getTokenPrice(symbol: string): Promise<number> {
     try {
         // Simple mapping for common missing tokens
         const geckoIds: Record<string, string> = {
-            'PENGU': 'pengu-2',
+            'PENGU': 'pudgy-penguins',
             'JUP': 'jupiter-exchange-solana',
-            'JUPSOL': 'jupiter-staked-sol'
+            'JUPSOL': 'jupiter-staked-sol',
+            'WIF': 'dogwifhat',
+            'BONK': 'bonk'
         };
 
         const geckoId = geckoIds[symbol.toUpperCase()] || symbol.toLowerCase();

@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 // Simple in-memory cache
 const historyCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
 export async function getMarketHistory(req: Request, res: Response) {
     const { days = "1", coinId = "solana" } = req.query;
@@ -16,27 +16,34 @@ export async function getMarketHistory(req: Request, res: Response) {
     }
 
     try {
-        console.log(`[getMarketHistory] Fetching history for ${coinId} (${days} days)...`);
+        console.log(`[getMarketHistory] Fetching CoinGecko for ${coinId} (${days} days)...`);
         const response = await fetch(
-            `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`
+            `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
+            { signal: AbortSignal.timeout(10000) }
         );
 
         if (!response.ok) {
-            throw new Error(`CoinGecko API error: ${response.statusText}`);
+            throw new Error(`CoinGecko error: ${response.status}`);
         }
 
         const data = await response.json();
-
-        // Format: [timestamp, price]
         const prices = data.prices.map((item: [number, number]) => ({
             time: item[0],
             price: item[1]
         }));
 
         historyCache.set(cacheKey, { data: prices, timestamp: now });
+        console.log(`[getMarketHistory] Cached ${prices.length} points for ${coinId}`);
         res.json(prices);
     } catch (error: any) {
-        console.error("Error fetching market history:", error);
-        res.status(500).json({ error: "Failed to fetch market history" });
+        console.error(`[getMarketHistory] Error:`, error.message);
+
+        // Return cached data if available (even if expired)
+        if (cached) {
+            console.log(`[getMarketHistory] Returning stale cache for ${coinId}`);
+            return res.json(cached.data);
+        }
+
+        res.status(500).json({ error: `Failed to fetch history for ${coinId}` });
     }
 }

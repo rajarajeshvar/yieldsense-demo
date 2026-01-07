@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { FC } from 'react';
 import { Loader2, AlertCircle, Activity } from 'lucide-react';
 import { mlApi, type MLQuickAnalysis } from '../api';
-import { mapPoolTokens, getRecommendationDisplay, getSignalDisplay } from '../utils/tokenMapping';
+import { mapPoolTokens, getRecommendationDisplay, getSignalDisplay, toMLToken } from '../utils/tokenMapping';
 
 interface MLInsightsPanelProps {
     tokenA: string;
@@ -188,11 +188,55 @@ export const MLInsightsPanel: FC<MLInsightsPanelProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [analysis, setAnalysis] = useState<MLQuickAnalysis | null>(null);
 
-    // Check token support
-    const tokenMapping = useMemo(() => mapPoolTokens(tokenA, tokenB), [tokenA, tokenB]);
+    // Track if we've already fetched for the current token pair
+    // This prevents repeated fetches when prices change slightly
+    const fetchedForRef = useRef<string>('');
+
+    // Check token support and ensure alphabetical ordering for ML API
+    const tokenMapping = useMemo(() => {
+        const mapping = mapPoolTokens(tokenA, tokenB);
+
+        // ML API expects tokens in alphabetical order
+        // If they're not, swap them
+        if (mapping.mlTokenA && mapping.mlTokenB && mapping.mlTokenA > mapping.mlTokenB) {
+            return {
+                mlTokenA: mapping.mlTokenB,
+                mlTokenB: mapping.mlTokenA,
+                bothSupported: mapping.bothSupported,
+                swapped: true
+            };
+        }
+
+        return { ...mapping, swapped: false };
+    }, [tokenA, tokenB]);
+
+    // Reset fetchedFor when panel closes or tokens change
+    useEffect(() => {
+        if (!isOpen) {
+            fetchedForRef.current = '';
+            setAnalysis(null);
+            setError(null);
+        }
+    }, [isOpen, tokenA, tokenB]);
 
     useEffect(() => {
         if (!isOpen) return;
+
+        // Create a key for this fetch session
+        const fetchKey = `${tokenA}-${tokenB}`;
+
+        // Skip if we've already fetched for this token pair
+        if (fetchedForRef.current === fetchKey && analysis) {
+            console.log('MLInsightsPanel: Using cached analysis for', fetchKey);
+            return;
+        }
+
+        // Wait for at least one price to be available before fetching
+        const hasPrices = currentPriceA !== undefined || currentPriceB !== undefined;
+        if (!hasPrices) {
+            setLoading(true);
+            return;
+        }
 
         const fetchAnalysis = async () => {
             setLoading(true);
@@ -210,12 +254,34 @@ export const MLInsightsPanel: FC<MLInsightsPanelProps> = ({
                 await mlApi.healthCheck();
 
                 // Get quick analysis with real-time prices
-                // Match prices to ML tokens by comparing mapped tokens to original tokens (case-insensitive)
-                const isTokenAMappedFirst = tokenMapping.mlTokenA === tokenA.toLowerCase();
-                const priceForMLTokenA = isTokenAMappedFirst ? currentPriceA : currentPriceB;
-                const priceForMLTokenB = isTokenAMappedFirst ? currentPriceB : currentPriceA;
+                // Create a price map from ORIGINAL tokens to their prices
+                const originalMLTokenA = toMLToken(tokenA);
+                const originalMLTokenB = toMLToken(tokenB);
 
-                console.log(`MLInsightsPanel: Passing prices to API - ${tokenMapping.mlTokenA}: $${priceForMLTokenA}, ${tokenMapping.mlTokenB}: $${priceForMLTokenB}`);
+                if (!originalMLTokenA || !originalMLTokenB) {
+                    throw new Error('Token mapping failed');
+                }
+
+                // Create price map for ML tokens based on ORIGINAL mapping
+                const mlPriceMap: Record<string, number | undefined> = {
+                    [originalMLTokenA]: currentPriceA,
+                    [originalMLTokenB]: currentPriceB
+                };
+
+                // Now get prices for the alphabetically ordered ML tokens
+                const priceForMLTokenA = mlPriceMap[tokenMapping.mlTokenA!];
+                const priceForMLTokenB = mlPriceMap[tokenMapping.mlTokenB!];
+
+                // Validation: ensure prices are valid numbers
+                if (typeof priceForMLTokenA !== 'number' || typeof priceForMLTokenB !== 'number') {
+                    throw new Error(`Price mapping error: ${tokenMapping.mlTokenA}=$${priceForMLTokenA}, ${tokenMapping.mlTokenB}=$${priceForMLTokenB}`);
+                }
+
+                console.log(`MLInsightsPanel: Original tokens - [${tokenA}, ${tokenB}] with prices [$${currentPriceA}, $${currentPriceB}]`);
+                console.log(`MLInsightsPanel: Mapped to ML tokens - [${originalMLTokenA}, ${originalMLTokenB}]`);
+                console.log(`MLInsightsPanel: Alphabetically ordered - [${tokenMapping.mlTokenA}, ${tokenMapping.mlTokenB}]`);
+                console.log(`MLInsightsPanel: Final price map:`, mlPriceMap);
+                console.log(`MLInsightsPanel: Sending to API - ${tokenMapping.mlTokenA}: $${priceForMLTokenA}, ${tokenMapping.mlTokenB}: $${priceForMLTokenB}`);
 
                 const result = await mlApi.getQuickAnalysis(
                     tokenMapping.mlTokenA!,
@@ -225,6 +291,9 @@ export const MLInsightsPanel: FC<MLInsightsPanelProps> = ({
                 );
 
                 setAnalysis(result);
+
+                // Mark that we've successfully fetched for this token pair
+                fetchedForRef.current = `${tokenA}-${tokenB}`;
 
                 // Debug: Log ML API response to trace safety score mismatch
                 console.log('ML API Response:', {
@@ -263,7 +332,11 @@ export const MLInsightsPanel: FC<MLInsightsPanelProps> = ({
                     useTokenA = true;
                 }
 
-                const displayResult = useTokenA ? result.token_a : result.token_b;
+                // Correctly map API results (which might be swapped) back to Input Token A and Token B
+                const resultForInputA = tokenMapping.swapped ? result.token_b : result.token_a;
+                const resultForInputB = tokenMapping.swapped ? result.token_a : result.token_b;
+
+                const displayResult = useTokenA ? resultForInputA : resultForInputB;
 
                 if (onPredictedRangeChange && displayResult) {
                     onPredictedRangeChange(
@@ -273,14 +346,14 @@ export const MLInsightsPanel: FC<MLInsightsPanelProps> = ({
                 }
             } catch (err) {
                 console.error('ML Analysis error:', err);
-                setError('ML API not available. Start the API server at port 5000.');
+                setError('ML API not available. Start the API server at port 8000.');
             } finally {
                 setLoading(false);
             }
         };
 
         fetchAnalysis();
-    }, [isOpen, tokenMapping, onPredictedRangeChange, currentPriceA, currentPriceB]);
+    }, [isOpen, tokenMapping, onPredictedRangeChange, currentPriceA, currentPriceB, tokenA, tokenB]);
 
     if (!isOpen) return null;
 

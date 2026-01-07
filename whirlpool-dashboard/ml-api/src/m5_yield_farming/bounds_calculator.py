@@ -55,16 +55,6 @@ class BoundsCalculator:
         'pengu': 0.35      # PENGU: already capturing well
     }
     
-    # CoinGecko IDs for real-time prices
-    COINGECKO_IDS = {
-        'sol': 'solana',
-        'usdt': 'tether',
-        'pengu': 'pudgy-penguins',
-        'jupsol': 'jupiter-staked-sol',
-        'usdc': 'usd-coin',
-        'jup': 'jupiter-exchange-solana'
-    }
-    
     # DexScreener Token Addresses (Solana)
     TOKEN_ADDRESSES = {
         'sol': 'So11111111111111111111111111111111111111112',
@@ -77,10 +67,12 @@ class BoundsCalculator:
     
     def __init__(self, models_dir: str = "models"):
         """Initialize with volatility models directory."""
+        print(f"DEBUG: BoundsCalculator init from {__file__}", flush=True)
         self.models_dir = models_dir
         self.volatility_models = {}
         self.sentiment_model = None
         self.sentiment_tokenizer = None
+        self._last_24h_change = 0.0  # Initialize to prevent stale values across tokens
         self._load_models()
     
     def _load_models(self):
@@ -96,23 +88,53 @@ class BoundsCalculator:
                     print(f"Warning: Could not load {token} model: {e}")
         
         # Load sentiment model
+        # Load sentiment model
         sentiment_path = os.path.join(self.models_dir, "finbert_sentiment")
-        if os.path.exists(sentiment_path):
+        
+        try:
+            import torch
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+            
+            # Primary attempt: Load from local path if it looks valid
+            # If it's just an LFS pointer (very small), skip straight to download
+            model_source = sentiment_path
+            if os.path.exists(sentiment_path):
+                # Simple check: if model.safetensors or pytorch_model.bin is too small (<1KB), it's likely an LFS pointer
+                is_lfs_pointer = False
+                for fname in ['model.safetensors', 'pytorch_model.bin']:
+                    fpath = os.path.join(sentiment_path, fname)
+                    if os.path.exists(fpath) and os.path.getsize(fpath) < 2000:
+                        is_lfs_pointer = True
+                        break
+                
+                if is_lfs_pointer:
+                    print(f"DEBUG: Local model at {sentiment_path} appears to be an LFS pointer. Downloading from Hub...")
+                    model_source = "ProsusAI/finbert"
+            else:
+                model_source = "ProsusAI/finbert"
+
             try:
-                import torch
-                from transformers import AutoTokenizer, AutoModelForSequenceClassification
-                self.sentiment_tokenizer = AutoTokenizer.from_pretrained(sentiment_path)
-                self.sentiment_model = AutoModelForSequenceClassification.from_pretrained(sentiment_path)
-                self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                self.sentiment_model.to(self.device)
-                self.sentiment_model.eval()
-            except Exception as e:
-                print(f"Warning: Could not load sentiment model: {e}")
+                self.sentiment_tokenizer = AutoTokenizer.from_pretrained(model_source)
+                self.sentiment_model = AutoModelForSequenceClassification.from_pretrained(model_source)
+            except Exception as load_err:
+                print(f"Warning: Failed to load from {model_source}: {load_err}")
+                if model_source != "ProsusAI/finbert":
+                    print("Attempting fallback download from 'ProsusAI/finbert'...")
+                    self.sentiment_tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
+                    self.sentiment_model = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")
+                else:
+                    raise load_err
+
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            self.sentiment_model.to(self.device)
+            self.sentiment_model.eval()
+            print(f"DEBUG: Sentiment model loaded successfully from {model_source if 'ProsusAI' in model_source else 'local cache'}")
+        except Exception as e:
+            print(f"Warning: Could not load sentiment model: {e}")
     
     def fetch_current_price(self, token: str) -> float:
         """
-        Fetch real-time price with multiple fallbacks.
-        Priority: DexScreener -> CoinGecko -> Jupiter -> 0.0 (Error)
+        Fetch real-time price from DexScreener (Solana native, fast, reliable).
         """
         token = token.lower()
         
@@ -172,51 +194,8 @@ class BoundsCalculator:
                                         return price
         except Exception as e:
             print(f"  [!] DexScreener error for {token}: {e}")
-            
-        # 2. Try CoinGecko
-        try:
-            coin_id = self.COINGECKO_IDS.get(token)
-            if coin_id:
-                url = f"https://api.coingecko.com/api/v3/simple/price"
-                params = {"ids": coin_id, "vs_currencies": "usd"}
-                response = requests.get(url, params=params, timeout=5)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    price = float(data[coin_id]['usd'])
-                    if price > 0:
-                        return price
-                elif response.status_code == 429:
-                    print(f"  [!] CoinGecko rate limit for {token}")
-        except Exception as e:
-            print(f"  [!] CoinGecko error for {token}: {e}")
-            
-        # 3. Try Jupiter (Solana DEX)
-        try:
-            # Map symbol to Jupiter ID/Symbol
-            jup_symbol = token.upper()
-            if token == 'sol': jup_symbol = 'SOL'
-            elif token == 'usdc': jup_symbol = 'USDC'
-            elif token == 'usdt': jup_symbol = 'USDT'
-            elif token == 'jup': jup_symbol = 'JUP'
-            elif token == 'jupsol': jup_symbol = 'JupSOL'
-            elif token == 'pengu': jup_symbol = 'PENGU'
-            
-            url = f"https://price.jup.ag/v6/price?ids={jup_symbol}"
-            response = requests.get(url, timeout=5)
-            
-            if response.status_code == 200:
-                data = response.json()
-                price_data = data.get('data', {}).get(jup_symbol)
-                if price_data:
-                    price = float(price_data.get('price', 0))
-                    if price > 0:
-                        print(f"  [+] Fetched {token} price from Jupiter: ${price}")
-                        return price
-        except Exception as e:
-            print(f"  [!] Jupiter error for {token}: {e}")
         
-        # 4. Last resort for stablecoins
+        # Fallback for stablecoins only
         if token in ['usdc', 'usdt']:
             print(f"  [+] Using default stablecoin price for {token}: 1.0")
             return 1.0
@@ -230,15 +209,29 @@ class BoundsCalculator:
         """
         token = token.lower()
         
-        # Use local parquet files for historical data
-        parquet_path = f"data/processed/{token}_aligned.parquet"
-        if os.path.exists(parquet_path):
-            df = pd.read_parquet(parquet_path)
-            if len(df) > days:
-                df = df.iloc[-days:]
-            return df
+        # Search in multiple possible locations for parquet files
+        possible_paths = [
+            f"data/processed/{token}_aligned.parquet",
+            os.path.join(os.path.dirname(__file__), f"../../../../processed/{token}_aligned.parquet"),
+            os.path.join(os.path.dirname(__file__), f"../../data/processed/{token}_aligned.parquet"),
+            os.path.join(os.path.dirname(__file__), f"../../../data/processed/{token}_aligned.parquet"),
+            os.path.join(os.path.dirname(__file__), f"../../../../ml models and appraoch/data/processed/{token}_aligned.parquet"),
+            f"../ml models and appraoch/data/processed/{token}_aligned.parquet",
+            f"../../ml models and appraoch/data/processed/{token}_aligned.parquet",
+        ]
         
-        # Return empty DataFrame if no local data
+        for parquet_path in possible_paths:
+            if os.path.exists(parquet_path):
+                try:
+                    df = pd.read_parquet(parquet_path)
+                    if len(df) > days:
+                        df = df.iloc[-days:]
+                    return df
+                except Exception as e:
+                    print(f"Error reading {parquet_path}: {e}")
+                    continue
+        
+        # Return empty DataFrame if no local data found
         return pd.DataFrame()
     
     def get_lstm_prediction(self, token: str, historical_data: pd.DataFrame) -> Dict:
@@ -343,9 +336,24 @@ class BoundsCalculator:
         """
         token = token.lower()
         
-        # Fetch real-time price if not provided or if zero
-        if not current_price:
-            current_price = self.fetch_current_price(token)
+        # Reset 24h change to prevent cross-token contamination
+        self._last_24h_change = 0.0
+        
+        # ALWAYS fetch from DexScreener to get 24h change data for volatility
+        print(f"DEBUG: BoundsCalculator.calculate_bounds for {token}", flush=True)
+        fetched_price = self.fetch_current_price(token)
+        print(f"DEBUG: fetched_price={fetched_price}, passed_price={current_price}, last_24h_change={self._last_24h_change}", flush=True)
+        
+        # PRIORITY: Use provided price from frontend if valid, otherwise use fetched price
+        # This ensures the displayed current_price matches what frontend shows
+        if current_price and current_price > 0:
+            # Keep the passed price (from frontend)
+            print(f"DEBUG: Using PASSED price: ${current_price}")
+        else:
+            # Fallback to fetched price only if no valid price was passed
+            current_price = fetched_price
+            print(f"DEBUG: Using FETCHED price: ${current_price}")
+        # Note: _last_24h_change is now populated from fetch_current_price()
         
         # Fetch historical data if not provided
         if historical_data is None:
@@ -380,10 +388,10 @@ class BoundsCalculator:
             # Fallback: Estimate volatility from 24h price change if available
             if hasattr(self, '_last_24h_change') and self._last_24h_change != 0:
                 # Approximate daily volatility as abs(24h_change) / 2 (conservative estimate)
-                # e.g. 5% move -> 2.5% volatility
                 daily_volatility = max(0.02, abs(self._last_24h_change / 100.0) * 0.6)
             else:
-                daily_volatility = 0.02
+                # Default fallback when NO data is available
+                daily_volatility = 0.05
         
         # Scale to weekly (sqrt(7) rule)
         weekly_volatility = daily_volatility * np.sqrt(7)

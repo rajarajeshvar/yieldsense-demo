@@ -75,7 +75,7 @@ export function initWebSocket(server: HttpServer): WebSocketServer {
         // Handle disconnect
         ws.on("close", () => {
             allClients.delete(ws);
-            
+
             // Remove from wallet-specific tracking
             if (ws.wallet) {
                 const walletClients = clientsByWallet.get(ws.wallet);
@@ -88,7 +88,7 @@ export function initWebSocket(server: HttpServer): WebSocketServer {
                     }
                 }
             }
-            
+
             console.log(`🔌 Client disconnected. Total clients: ${allClients.size}`);
         });
 
@@ -124,20 +124,20 @@ function handleMessage(ws: ExtendedWebSocket, msg: WSMessage) {
         case "SUBSCRIBE":
             if (msg.wallet) {
                 ws.wallet = msg.wallet;
-                
+
                 // Add to wallet-specific tracking
                 if (!clientsByWallet.has(msg.wallet)) {
                     clientsByWallet.set(msg.wallet, new Set());
                 }
                 clientsByWallet.get(msg.wallet)!.add(ws);
-                
+
                 console.log(`📌 Client subscribed to wallet: ${msg.wallet}`);
-                
+
                 // Subscribe to Solana account updates for this wallet
                 subscribeToWallet(msg.wallet);
             }
             break;
-            
+
         case "UNSUBSCRIBE":
             if (ws.wallet) {
                 const walletClients = clientsByWallet.get(ws.wallet);
@@ -151,7 +151,7 @@ function handleMessage(ws: ExtendedWebSocket, msg: WSMessage) {
                 ws.wallet = undefined;
             }
             break;
-            
+
         default:
             console.log("Unknown message type:", msg.type);
     }
@@ -167,7 +167,7 @@ async function subscribeToWallet(wallet: string) {
 
     try {
         const pubkey = new PublicKey(wallet);
-        
+
         // Subscribe to account changes
         const subId = solanaConnection.onAccountChange(
             pubkey,
@@ -182,7 +182,7 @@ async function subscribeToWallet(wallet: string) {
             },
             "confirmed"
         );
-        
+
         accountSubscriptions.set(wallet, subId);
         console.log(`📡 Subscribed to Solana account: ${wallet}`);
     } catch (error) {
@@ -211,13 +211,13 @@ async function unsubscribeFromWallet(wallet: string) {
  */
 export function broadcast(type: WSMessage["type"], data: any) {
     const message = JSON.stringify({ type, data, timestamp: Date.now() });
-    
+
     allClients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
         }
     });
-    
+
     console.log(`📢 Broadcast ${type} to ${allClients.size} clients`);
 }
 
@@ -227,15 +227,15 @@ export function broadcast(type: WSMessage["type"], data: any) {
 export function broadcastToWallet(wallet: string, type: WSMessage["type"], data: any) {
     const clients = clientsByWallet.get(wallet);
     if (!clients || clients.size === 0) return;
-    
+
     const message = JSON.stringify({ type, data, timestamp: Date.now() });
-    
+
     clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
         }
     });
-    
+
     console.log(`📢 Broadcast ${type} to ${clients.size} clients watching wallet ${wallet.slice(0, 8)}...`);
 }
 

@@ -34,6 +34,9 @@ export const PriceChart = ({ data = [], loading: initialLoading, coinId, title =
     useEffect(() => {
         if (!coinId) return;
 
+        // Clear previous data immediately when coinId changes
+        setChartData([]);
+
         const fetchData = async () => {
             setLoading(true);
             try {
@@ -50,9 +53,15 @@ export const PriceChart = ({ data = [], loading: initialLoading, coinId, title =
                 const response = await fetch(`${BACKEND_URL}/api/market/history?days=${days}&coinId=${coinId}`);
                 if (!response.ok) throw new Error('Failed to fetch chart data');
                 const result = await response.json();
-                setChartData(result);
+
+                // Only set data if it's for the current coinId (avoid race conditions)
+                if (result && result.length > 0) {
+                    setChartData(result);
+                } else {
+                    console.warn(`PriceChart: No data returned for ${coinId}`);
+                }
             } catch (error) {
-                console.error('PriceChart fetch error:', error);
+                console.error(`PriceChart fetch error for ${coinId}:`, error);
             } finally {
                 setLoading(false);
             }
@@ -98,6 +107,11 @@ export const PriceChart = ({ data = [], loading: initialLoading, coinId, title =
                 <div className="flex items-center justify-center h-full text-gray-400 flex-col gap-2">
                     <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     <span className="text-xs">Loading chart...</span>
+                </div>
+            ) : formattedData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-400 flex-col gap-2">
+                    <span className="text-xs">No price data available</span>
+                    <span className="text-xs text-gray-500">Try again in a moment</span>
                 </div>
             ) : (
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>

@@ -684,8 +684,9 @@ export const CreatePositionPanel: FC<CreatePositionPanelProps> = ({
                                 }
                                 onPredictedRangeChange={(lower, upper) => {
                                     // ML returns lower/upper in USD for Token A.
-                                    // Since we are now in "USD Mode" for display, we just use them directly.
-                                    if (selectedPreset !== 'custom') {
+                                    // Only set range on FIRST load (when minPrice/maxPrice are empty)
+                                    // Don't override user's preset selection
+                                    if (!minPrice && !maxPrice && lower > 0 && upper > 0) {
                                         setMinPrice(lower.toFixed(4));
                                         setMaxPrice(upper.toFixed(4));
                                     }
