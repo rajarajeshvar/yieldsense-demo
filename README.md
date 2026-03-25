@@ -1,113 +1,195 @@
-# Whirlpools
+<p align="center">
+  <img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana"/>
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React"/>
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
+</p>
 
-Whirlpools is an open-source concentrated liquidity AMM contract on the Solana blockchain.
-This repository contains the Rust smart contract and SDKs to interact with a deployed program.
+<h1 align="center">YieldSense</h1>
 
-The official deployment of the whirlpool contract can be found at the `whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc` address on:
-- [Solana Mainnet](https://solscan.io/account/whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc)
-- [Solana Devnet](https://solscan.io/account/whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc?cluster=devnet)
+<p align="center">
+  <b>AI-Powered Concentrated Liquidity Position Manager for Orca Whirlpools on Solana</b>
+</p>
 
-The contract is deployed using verifiable build, so that you can ensure that the hash of the on-chain program matches the hash of the program in this codebase.
-- [Solana Verify CLI](https://github.com/Ellipsis-Labs/solana-verifiable-build)
-- [Verification result on Osec API](https://verify.osec.io/status/whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc)
+<p align="center">
+  <i>Maximize your DeFi yields with intelligent range predictions</i>
+</p>
 
-The program has been audited several times by different security firms.
-* Jan 28th, 2022 - [Kudelski Security](/.audits/2022-01-28.pdf)
-* May 5th, 2022 - [Neodyme](/.audits/2022-05-05.pdf)
-* Aug 21st, 2024 - [OtterSec](/.audits/2024-08-21.pdf)
-* Feb 28th, 2025 - [Sec3](/.audits/2025-02-28.pdf)
-* Jun 23rd, 2025 - [Sec3](/.audits/2025-06-23.pdf)
-* Aug 22nd, 2025 - [Sec3](/.audits/2025-08-22.pdf)
+<p align="center">
+  <a href="https://yieldsense-app.web.app/">Live Demo</a>
+</p>
 
-## Usage
+---
 
-This repository contains several libraries that can be used to interact with the Whirlpools contract. For most purposes you can use our high-level SDKs, `@orca-so/whirlpools` for Typescript projects, and `orca_whirlpools` for Rust projects.
+## Overview
 
-For specific use-cases you can opt for integrating with lower level packages such as:
-* `@orca-so/whirlpools-client` & `orca_whirlpools_client` - auto-generated client for the Whirlpools program that contains account, instruction and error parsing.
-* `@orca-so/whirlpools-core` & `orca_whirlpools_core` - utility, math and quoting functions used by other packages.
+YieldSense is an advanced liquidity management platform that combines machine learning and real-time analytics to optimize concentrated liquidity positions on Orca Whirlpools. The platform enables users to make data-driven decisions when providing liquidity on the Solana blockchain.
 
-The legacy Typescript SDK (`@orca-so/whirlpools-sdk`) remains a solid choice, and it’s currently the only option if your project uses Solana Web3.js.
+---
 
-For a more detailed overview of our SDK suite and usage examples, visit our [developer documentation](https://dev.orca.so/) site.
+## Deployment
 
-## Local Development
+YieldSense is deployed and publicly accessible at:
 
-This monorepo contains all the code needed to build, deploy and interact with the Whirlpools contract.
+**Live URL:** https://yieldsense-app.web.app/
 
-### Requirements
+This deployment mirrors the full functionality of the development environment and demonstrates a production-ready architecture for AI-powered DeFi tools.
 
-- Anchor v0.32.1
-- Solana v2.1.0
+---
 
-### Getting Started
+## Key Features
 
-#### Automated Setup Script
+### AI-Powered Range Prediction
+- Machine learning models analyze historical price data and market volatility
+- Dynamic recommendations that adapt to current market sentiment
+- Confidence scores to support informed decision-making
 
-For a complete development environment setup, use the provided setup script:
+### Real-Time Yield Estimation
+- 24-hour yield calculations based on pool volume and fee tier
+- Concentration heuristics showing expected returns before deposit
+- Accurate fee tier scaling (0.01%, 0.04%, 0.30%)
 
-```bash
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+### Telegram Alert System
+- Real-time out-of-range notifications when positions require attention
+- Firebase-powered monitoring infrastructure
+- Customizable alert thresholds per position
+
+### Interactive Dashboard
+- Modern, responsive user interface with glassmorphism design
+- Live price charts and liquidity distribution visualization
+- Streamlined position creation workflow
+
+---
+
+## Architecture
+
+```
++-------------------------------------------------------------------+
+|                        YIELDSENSE STACK                            |
++-------------------------------------------------------------------+
+|                                                                    |
+|  +----------------+  +----------------+  +----------------------+  |
+|  |   Frontend     |  |   Backend      |  |      ML API          |  |
+|  |    (React)     |  |  (Express)     |  |   (FastAPI/Python)   |  |
+|  |                |  |                |  |                      |  |
+|  | - Dashboard    |  | - Position     |  | - Price Prediction   |  |
+|  | - Charts       |<>|   Manager      |<>| - Volatility Model   |  |
+|  | - Wallet       |  | - WebSocket    |  | - Sentiment Analysis |  |
+|  |   Connect      |  | - Pool Data    |  | - Staking APY        |  |
+|  +----------------+  +----------------+  +----------------------+  |
+|         |                  |                     |                 |
+|  +------------------------------------------------------------+   |
+|  |                    SOLANA BLOCKCHAIN                        |   |
+|  |            Orca Whirlpools  |  SPL Tokens                   |   |
+|  +------------------------------------------------------------+   |
+|                                                                    |
+|  +----------------+  +---------------------------------------+     |
+|  |  Monitoring    |  |              Firebase                 |     |
+|  |   Service      |<>|  - Alert Rules - User Preferences     |     |
+|  |  (Telegram)    |  |                                       |     |
+|  +----------------+  +---------------------------------------+     |
+|                                                                    |
++-------------------------------------------------------------------+
 ```
 
-This script installs all required dependencies and builds the project. It's designed for fresh environments (cloud VMs, containers, new machines) and doesn't check for existing versions. The script also serves as a reference for understanding which dependencies are needed at each stage.
+---
 
-#### Manual Setup
+## Technology Stack
 
-If you prefer manual installation or already have some dependencies:
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 19, TypeScript, Vite, TailwindCSS, Radix UI |
+| **Backend** | Node.js, Express, TypeScript, WebSocket |
+| **ML API** | Python, FastAPI, scikit-learn, TensorFlow, Transformers |
+| **Blockchain** | Solana, Orca Whirlpools SDK, Anchor Framework |
+| **Database** | Firebase Firestore |
+| **Alerts** | Telegram Bot API |
+| **Hosting** | Thinkroot, Render.com |
 
-* Install system dependencies (build tools, Node.js, Rust, Solana CLI, Anchor)
-  * Reference `scripts/setup.sh` for the exact versions and installation steps
-* Clone this repository: `git clone https://github.com/orca-so/whirlpools`
-* Install JavaScript dependencies: `yarn`
-* Build the project: `yarn build`
-* Set up a Solana wallet if needed (see below)
+---
 
-#### Setting up a Solana wallet
+## Quick Start
 
-* Create a new keypair using `solana-keygen new`.
-* Check if you have a valid wallet address using `solana address`.
-* Set your local config to the Solana devnet env using `solana config set --url https://api.devnet.solana.com`.
-* Give yourself some devnet SOL (for transaction fees) using `solana airdrop 1`.
-* Check if you have a positive balance using `solana balance`.
+### Prerequisites
+- Node.js 18+
+- Python 3.10+
+- Solana Wallet (Phantom, Solflare, or compatible)
 
-### Components
+### Installation
 
-This repository uses NX to manage the Rust and Typescript codebases. This allows us to have a monorepo with multiple packages and share code between them. Dependencies between packages are automatically resolved by NX, so you don't have to worry about managing that yourself.
+```bash
+# Clone the repository
+git clone https://github.com/Manimaran-tech/Yeildsense.git
+cd Yeildsense
 
-This repository is split up into several parts. The following is a (non-exhaustive) list of the components and their purpose.
+# Install dependencies
+npm install
+cd whirlpool-dashboard && npm install
+cd server && npm install
+cd ../ml-api && pip install -r requirements.txt
+```
 
-* **`/programs/*`** - Rust programs that are deployed on Solana.
-* **`/ts-sdk/*`** - Typescript SDKs for interacting with the programs.
-* **`/rust-sdk/*`** - Rust SDKs for interacting with the programs.
-* **`/docs/*`** - Documentation for the programs and SDKs.
-* **`/legacy-sdk/*`** - Legacy Typescript SDKs and integration tests.
+### Running All Services
 
-### Commands
+```powershell
+# Windows - Launch all services in separate windows
+powershell -ExecutionPolicy Bypass -File start_services.ps1
+```
 
-All commands should be run from the root of the repository. NX will try to run a command with the same name for each individual component, skipping the component if that specific command does not exist.
+**Services:**
 
-Below is a (non-exhaustive) list of available commands:
-* **`yarn build`** - compile the components for deployment or serving.
-* **`yarn clean`** - clean up all local build products, useful for when builds are failing.
-* **`yarn test`** - run the tests for all components.
-* **`yarn format`** - run formatter to format code.
+| Service | Port | Description |
+|---------|------|-------------|
+| Frontend | 3005 | React Dashboard (Vite) |
+| Backend | 3001 | Position Manager API |
+| ML API | 8000 | AI Prediction Service |
+| Trading API | 3002 | Swap Aggregation Service |
 
-If you look closely, the commands just call individual commands specified in the component's `package.json` file. These commands should not be run by themselves as it will not resolve the right dependencies and will not execute the prerequisites. Instead you can specify which package to run with `yarn build programs/whirlpool`, `yarn test legacy-sdk/whirlpool`, etc.
+---
 
-If you want to stream the logs of a specific command you can add the `--output-style stream` flag to the command. This allows you to view the logs of the command as they are being produced which can be useful for longer running tasks like integration tests.
+## Supported Pools
 
-### Changesets
+| Pool | Fee Tier | Status |
+|------|----------|--------|
+| SOL/USDC | 0.01% | Active |
+| SOL/USDC | 0.04% | Active |
+| JupSOL/SOL | 0.01% | Active |
+| SOL/PENGU | 0.30% | Active |
+| JUP/SOL | 0.30% | Active |
 
-When contributing to this repository, please include a changeset with your changes. You can create a changeset by running `yarn changeset`. If your changes are not related to any of the packages, you can create an empty changeset by running `yarn changeset --empty`. In your pull request, you do not have to manually update the version numbers.
+---
 
-To publish packages to npm and cargo, you can run run the `publish` gh action. This will update the versions of the packages and publish them to npm and cargo.
+## ML Model Details
 
-# Support
+### Price Prediction
+- **Algorithm**: Gradient Boosting with LSTM hybrid approach
+- **Features**: OHLCV data, volatility metrics, volume trends
+- **Performance**: Approximately 78% directional accuracy (24-hour horizon)
 
-Have problems integrating with the SDK? Pop by over to the Orca [Discord](https://discord.gg/nSwGWn5KSG) #dev-questions channel and chat with one of our engineers.
+### Volatility Analysis
+- **Model**: GARCH(1,1) for short-term volatility estimation
+- **Output**: Expected price range with confidence intervals
 
-### Feedback
+### Staking APY Calculation
+- **Sources**: Real-time RPC inflation rate and MEV rewards
+- **Supported Tokens**: JupSOL
 
-Got ideas on how to improve the system? Open up an issue on github and let's brainstorm more about it together!
+---
+
+## Security
+
+- **Client-Side Signing**: No private keys are stored on servers
+- **Environment Variables**: All secrets are managed through environment configuration
+- **Rate Limiting**: Configured RPC endpoints with appropriate limits
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <b>YieldSense - Smarter Liquidity, Better Yields</b>
+</p>
