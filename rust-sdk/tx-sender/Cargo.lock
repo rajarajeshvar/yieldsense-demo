@@ -2283,7 +2283,7 @@ dependencies = [
  "solana-keypair",
  "solana-message",
  "solana-program",
- "solana-pubkey 3.0.0",
+ "solana-pubkey 4.2.0",
  "solana-rpc-client-api",
  "solana-signature",
  "solana-signer",
@@ -3380,6 +3380,7 @@ version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68c5d02824391b072dc5cd0aaa85fb0af9784a21d23286a767994d1e8a322131"
 dependencies = [
+ "borsh",
  "bytemuck",
  "bytemuck_derive",
  "curve25519-dalek",
@@ -3388,10 +3389,12 @@ dependencies = [
  "serde",
  "serde_derive",
  "sha2-const-stable",
+ "solana-atomic-u64",
  "solana-define-syscall 5.0.0",
  "solana-program-error",
  "solana-sanitize",
  "solana-sha256-hasher",
+ "wincode 0.4.4",
 ]
 
 [[package]]
